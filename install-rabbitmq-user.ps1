@@ -7,7 +7,7 @@ param (
 	$percentComplete = 0,
 	# force installing and configuring RabbitMQ user even if user guest does not exist
 	[switch]$force = $false
-)
+	)
 
 try {	
 	if ($config) {
@@ -33,8 +33,7 @@ try {
 	$installerListUsersCmd = $installerControlPath + ' list_users'
 	$userlist = invoke-expression -Command "$installerListUsersCmd"
 
-	# check if user guest exist
-	
+	# check if user guest exist	
 
        Foreach ($user in $userlist) {
 		$userName = $user.Split("[")[0].Trim()
@@ -44,17 +43,14 @@ try {
 		}
 	}	
 
-	$skipInstall = $false
-	
+	$skipInstall = $false	
 	if (!$force -And !$isguestpresent) {
 		Write-Warning "Skipping $nameAddUser installation as user $guestcred does not exist in RabbitMQ."
 		$skipInstall = $true
 	}
 	
-	Write-InstallProgress $nameAddUser 100
-	
-	if (!$skipInstall) {
-	
+	Write-InstallProgress $nameAddUser 50	
+	if (!$skipInstall) {	
 		# prompt new user name
 		do{
 			$isValidUser = $true
@@ -118,14 +114,11 @@ try {
 			Start-Sleep 5
 		}
 		invoke-expression -Command 'Pop-Location'
-	}
-	
+	}	
 } catch {
 	
-	invoke-expression -Command 'Pop-Location'
-	
+	invoke-expression -Command 'Pop-Location'	
 	Write-Warning "Rolling back $name installation due to error in $name installation."
-
 	if ($isInstallStarted) {
 		# revert backup
 		invoke-expression -Command 'Push-Location "$installerSbinPath"'
