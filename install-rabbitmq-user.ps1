@@ -22,30 +22,9 @@ try {
 	$guestcred = "guest"
 	
 	Write-InstallProgress $nameAddUser $percentComplete "1 minute" $null $true
-	
-	# verify WFM installation
-	$objInstalled = Search-Registry $nameWFM
-	if(!$objInstalled) {
-		$objInstalled = Search-Registry $nameRadDesktop
-	}
-	if ($objInstalled) {
-		$objInstalledWFM = Get-ItemProperty $keyWFM | select InstallPath
-		if ($objInstalledWFM.InstallPath) {
-			$installPathWFM = ($objInstalledWFM.InstallPath).Substring(0, ($objInstalledWFM.InstallPath).length - 1)
-		}
-	} else {
-		Write-Error "$nameWFM installation not found. Please install $nameWFM and rerun the script to install RabbitMQ service."
-	}
-
-    # verify PREDIX installation
-	$ID_DSP_HOME = [environment]::GetEnvironmentVariable("ID_DSP_HOME","Machine")
-	if (!($ID_DSP_HOME -And (Test-Path $ID_DSP_HOME\etc\users.properties))) {
-		Write-Error "Skipping $name installation as Predix installation not found. Please install Predix and rerun the script."
-	}	
-	
-	
+			
 	$backuperlangcookieFile = [environment]::GetEnvironmentVariable("windir","Machine")        
-    $windowserlangcookiepath=$backuperlangcookieFile+ "\.erlang.cookie"
+        $windowserlangcookiepath=$backuperlangcookieFile+ "\.erlang.cookie"
 	$usererlangcookiepath = $env:USERPROFILE+"\.erlang.cookie"	
 	Copy-File "$windowserlangcookiepath" "$usererlangcookiepath"
 	
@@ -57,7 +36,7 @@ try {
 	# check if user guest exist
 	
 
-    Foreach ($user in $userlist) {
+       Foreach ($user in $userlist) {
 		$userName = $user.Split("[")[0].Trim()
 		if ($userName -ceq $guestcred) {
 			$isguestpresent = $true
@@ -138,46 +117,6 @@ try {
 			Install-Software 'Delete guest user' $installerControlPath "delete_user $guestcred" $logFilePath $true $true
 			Start-Sleep 5
 		}
-		
-		invoke-expression -Command 'Pop-Location'
-		Write-Success "RabbitMQ user $adminusername added successfully"
-			
-		# Configure user to Predix
-		$name = "Config RabbitMQ Credentials"
-		$installerPath = "python"
-		$installerConfigRabbitMQ="rabbitmq-update-config.py"
-		$eventspath = $ID_DSP_HOME + "\dsp\config\com.ge.hcit.id.events.conf"
-		$cryptoconfpath = $installPathWFM +"\conf\cryptoApp.conf"
-		$adminuserkey_predix = '"id.messaging.broker.ConnectionUserName="'
-		$adminpwdkey_predix = '"id.messaging.broker.ConnectionPassword="'
-		$adminpwdencryptkey_predix='"id.messaging.broker.ConnectionPassword.encrypted="'
-		$adminuserkey_crypto = '"rabbitmq.username ="'
-		$adminpwdkey_crypto='"rabbitmq.password ="'
-		$adminpwdkeyencrypt_crypto='"rabbitmq.password.encrypted ="'
-		$empty_val = '""'
-		
-		# backup Predix eventspath
-		$backupeventspath = $installPathWFM + '\conf\ConfBackups\com.ge.hcit.id.events_' + (Get-Date -format MMddyyyyHHmmss) + '.conf'
-		Copy-File "$eventspath" "$backupeventspath"
-		
-		# backup WFM cryptoconfpath	
-		$backupcryptoconfpath = $installPathWFM + '\conf\ConfBackups\cryptoApp_' + (Get-Date -format MMddyyyyHHmmss) + '.conf'
-		Copy-File "$cryptoconfpath" "$backupcryptoconfpath"
-
-		# proceed to installation
-		$isPredixConfUpdateStarted = $true
-		
-		# configure predix RabbitMQ Admin user and password
-		Install-Software $name $installerPath "$installerConfigRabbitMQ $eventspath $adminuserkey_predix $adminusername" $null $true $true
-		Install-Software $name $installerPath "$installerConfigRabbitMQ $eventspath $adminpwdkey_predix $adminpassword" $null $true	$true
-		Install-Software $name $installerPath "$installerConfigRabbitMQ $eventspath $adminpwdencryptkey_predix $empty_val" $null $true $true		
-
-		$isPlayConfUpdateStarted = $true
-		Install-Software $name $installerPath "$installerConfigRabbitMQ `"$cryptoconfpath`" $adminuserkey_crypto $adminusername" $null $true $true
-		Install-Software $name $installerPath "$installerConfigRabbitMQ `"$cryptoconfpath`" $adminpwdkey_crypto $adminpassword" $null $true $true
-		Install-Software $name $installerPath "$installerConfigRabbitMQ `"$cryptoconfpath`" $adminpwdkeyencrypt_crypto $empty_val" $null $true $true
-		Write-Success "RabbitMQ user $adminusername configured successfully"
-
 		invoke-expression -Command 'Pop-Location'
 	}
 	
@@ -198,20 +137,6 @@ try {
 		Start-Sleep 5
 		Install-Software $name $installerControlPath "delete_user $adminusername" $false $true $true		
 	}
-	
-	if ($isPredixConfUpdateStarted) {
-		# revert backup
-		Copy-File "$backupeventspath" "$eventspath"
-		# remove backup
-		Remove-File "$backupeventspath"
-		if ($isPlayConfUpdateStarted) {
-			# revert backup
-			Copy-File "$backupcryptoconfpath" "$cryptoconfpath"
-			# remove backup
-			Remove-File "$backupcryptoconfpath"
-		}
-	}
-	
 	if ($config) {
 		Write-ErrorAsString $error[0]
 	} else {
